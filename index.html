@@ -1,0 +1,1837 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>欣奕馬到成功帳務系統</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Google Fonts -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Noto Sans TC", sans-serif;
+        -webkit-tap-highlight-color: transparent;
+      }
+      button,
+      input,
+      select {
+        touch-action: manipulation;
+      }
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+      }
+      /* 載入與錯誤遮罩 */
+      #startup-loader {
+        position: fixed;
+        inset: 0;
+        background: #f8fafc;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      .error-box {
+        background: #fef2f2;
+        border: 1px solid #ef4444;
+        color: #991b1b;
+        padding: 20px;
+        border-radius: 8px;
+        max-width: 80%;
+        text-align: center;
+        display: none;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 text-slate-800 h-screen overflow-hidden">
+    <!-- 系統啟動載入畫面 -->
+    <div id="startup-loader">
+      <div id="loader-spinner" class="flex flex-col items-center">
+        <svg
+          class="animate-spin h-10 w-10 text-blue-600 mb-4"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-width="4"
+          ></circle>
+          <path
+            class="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          ></path>
+        </svg>
+        <h2 class="text-xl font-bold text-slate-700">系統啟動中...</h2>
+        <p class="text-slate-500 text-sm mt-2">正在載入資源與雲端資料</p>
+      </div>
+      <div id="error-message" class="error-box">
+        <h3 class="font-bold text-lg mb-2">發生錯誤</h3>
+        <p id="error-text"></p>
+        <button
+          onclick="location.reload()"
+          class="mt-4 bg-red-600 text-white px-4 py-2 rounded"
+        >
+          重新整理
+        </button>
+      </div>
+    </div>
+
+    <div id="app" class="flex h-full" style="display: none">
+      <!-- Loading Overlay (雲端同步用) -->
+      <div
+        v-if="isLoading"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-white/70 backdrop-blur-sm"
+      >
+        <div
+          class="bg-white p-6 rounded-xl shadow-2xl flex flex-col items-center animate-bounce"
+        >
+          <svg
+            class="animate-spin h-8 w-8 text-blue-600 mb-2"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="4"
+            ></circle>
+            <path
+              class="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            ></path>
+          </svg>
+          <span class="font-bold text-slate-700">雲端同步中...</span>
+        </div>
+      </div>
+
+      <!-- 側邊欄 -->
+      <aside
+        class="w-64 bg-slate-900 text-white flex flex-col shadow-2xl z-20 transition-all duration-300 transform"
+        :class="isMobile ? (isMobileMenuHidden ? '-translate-x-full absolute h-full' : 'translate-x-0 absolute h-full') : 'translate-x-0 relative'"
+      >
+        <div
+          class="p-6 border-b border-slate-800 flex justify-between items-center"
+        >
+          <div>
+            <h1
+              class="text-lg font-bold tracking-wider flex items-center gap-2 text-yellow-400"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-6 w-6 flex-shrink-0"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"
+                />
+              </svg>
+              <span
+                >欣奕馬到成功<br /><span class="text-sm text-slate-300"
+                  >帳務系統</span
+                ></span
+              >
+            </h1>
+            <div class="flex items-center gap-1 mt-2">
+              <span
+                class="w-2 h-2 rounded-full"
+                :class="gasUrl ? 'bg-green-500' : 'bg-gray-500'"
+              ></span>
+              <p class="text-xs text-slate-400">
+                {{ gasUrl ? '已連線雲端' : '本機模式' }}
+              </p>
+            </div>
+          </div>
+          <button
+            v-if="isMobile"
+            @click="toggleMobileMenu"
+            class="text-slate-400 p-1"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <nav class="flex-1 px-3 py-4 space-y-2 overflow-y-auto">
+          <a
+            v-for="item in menuItems"
+            :key="item.id"
+            @click="setView(item.id)"
+            :class="currentView === item.id ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800'"
+            class="flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-colors group"
+          >
+            <span v-html="item.icon"></span>
+            <span class="font-medium text-lg">{{ item.label }}</span>
+          </a>
+        </nav>
+
+        <div
+          class="p-4 bg-slate-950 text-xs text-slate-500 border-t border-slate-800"
+        >
+          <p>© 2024 欣奕馬到成功 v2.4</p>
+        </div>
+      </aside>
+
+      <!-- 遮罩 -->
+      <div
+        v-if="isMobile && !isMobileMenuHidden"
+        class="fixed inset-0 bg-black/50 z-10"
+        @click="toggleMobileMenu"
+      ></div>
+
+      <!-- 主要內容區 -->
+      <main class="flex-1 overflow-y-auto relative bg-slate-50 w-full">
+        <header
+          class="md:hidden bg-white shadow-sm p-4 flex items-center justify-between sticky top-0 z-10"
+        >
+          <span class="font-bold text-lg text-slate-800">{{ getTitle() }}</span>
+          <button
+            @click="toggleMobileMenu"
+            class="text-slate-600 p-2 rounded hover:bg-slate-100"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 6h16M4 12h16M4 18h16"
+              />
+            </svg>
+          </button>
+        </header>
+
+        <div class="p-4 md:p-8 max-w-7xl mx-auto space-y-6 pb-24">
+          <!-- Dashboard -->
+          <div v-if="currentView === 'dashboard'" class="space-y-6">
+            <div
+              class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4"
+            >
+              <div>
+                <h2 class="text-2xl font-bold text-slate-800">財務總覽</h2>
+                <p class="text-sm text-slate-500">
+                  本月統計 ({{ currentMonthStr }})
+                </p>
+              </div>
+              <div
+                class="flex gap-2 items-center bg-white p-2 rounded-lg shadow-sm border border-slate-200 w-full md:w-auto"
+              >
+                <button
+                  @click="syncToCloud"
+                  class="text-blue-500 hover:text-blue-700 p-2 border border-blue-100 rounded hover:bg-blue-50 flex items-center gap-2"
+                  title="手動同步"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-5 w-5"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path
+                      d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"
+                    />
+                    <path d="M3 3v5h5" />
+                    <path
+                      d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"
+                    />
+                    <path d="M16 16h5v5" />
+                  </svg>
+                  <span>同步雲端</span>
+                </button>
+                <button
+                  @click="resetData"
+                  class="text-slate-400 hover:text-red-500 p-2 border border-transparent hover:border-red-100 rounded"
+                  title="重置本機快取"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-5 w-5"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M3 6h18" />
+                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                  </svg>
+                </button>
+                <label
+                  class="cursor-pointer text-slate-400 hover:text-emerald-600 p-2 border border-transparent hover:border-emerald-100 rounded"
+                  title="匯入 CSV"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-5 w-5"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                  <input
+                    type="file"
+                    @change="handleCSVUpload"
+                    accept=".csv"
+                    class="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div
+                class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-emerald-500"
+              >
+                <p class="text-sm text-slate-500">本月實收</p>
+                <h3 class="text-2xl font-bold text-emerald-600 mt-1">
+                  {{ formatCurrency(stats.monthIncome) }}
+                </h3>
+              </div>
+              <div
+                class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-rose-500"
+              >
+                <p class="text-sm text-slate-500">本月支出</p>
+                <h3 class="text-2xl font-bold text-rose-600 mt-1">
+                  {{ formatCurrency(stats.monthExpense) }}
+                </h3>
+              </div>
+              <div
+                class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-blue-500"
+              >
+                <p class="text-sm text-slate-500">本月淨利</p>
+                <h3 class="text-2xl font-bold text-slate-700 mt-1">
+                  {{ formatCurrency(stats.monthNet) }}
+                </h3>
+              </div>
+              <div
+                class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-orange-400"
+              >
+                <p class="text-sm text-slate-500">目前總欠費</p>
+                <h3 class="text-2xl font-bold text-orange-500 mt-1">
+                  {{ formatCurrency(stats.totalOverdue) }}
+                </h3>
+              </div>
+            </div>
+
+            <!-- Overdue List -->
+            <div
+              class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
+            >
+              <div
+                class="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center"
+              >
+                <h3 class="font-bold text-slate-700 flex items-center gap-2">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-5 w-5 text-orange-500"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path
+                      d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
+                    />
+                    <line x1="12" y1="9" x2="12" y2="13" />
+                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                  </svg>
+                  近期欠費名單
+                </h3>
+                <button
+                  @click="setView('reports')"
+                  class="text-sm text-blue-600 hover:underline"
+                >
+                  查看報表
+                </button>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                  <thead
+                    class="bg-slate-50 text-slate-500 font-medium border-b border-slate-100"
+                  >
+                    <tr>
+                      <th class="px-6 py-3 whitespace-nowrap">學生</th>
+                      <th class="px-6 py-3 whitespace-nowrap">項目</th>
+                      <th class="px-6 py-3 whitespace-nowrap">到期日</th>
+                      <th class="px-6 py-3 whitespace-nowrap text-right">
+                        欠費
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100">
+                    <tr
+                      v-for="o in overdueOrders.slice(0,5)"
+                      :key="o.id"
+                      class="hover:bg-orange-50/50"
+                    >
+                      <td class="px-6 py-3 font-medium">
+                        {{ getStudentName(o.studentId) }}
+                      </td>
+                      <td class="px-6 py-3">{{ o.title }}</td>
+                      <td class="px-6 py-3 text-red-500">{{ o.dueDate }}</td>
+                      <td
+                        class="px-6 py-3 text-right font-bold text-orange-600"
+                      >
+                        {{ formatCurrency(o.totalAmount - getPaidAmount(o.id))
+                        }}
+                      </td>
+                    </tr>
+                    <tr v-if="overdueOrders.length === 0">
+                      <td
+                        colspan="4"
+                        class="px-6 py-8 text-center text-slate-400"
+                      >
+                        目前無欠費紀錄
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tuition -->
+          <div v-if="currentView === 'tuition'" class="space-y-6">
+            <div class="flex flex-col gap-4">
+              <h2 class="text-2xl font-bold text-slate-800">繳費管理</h2>
+              <div class="flex gap-2">
+                <div class="relative flex-1">
+                  <input
+                    type="text"
+                    v-model="searchTerm"
+                    placeholder="搜尋學生姓名..."
+                    class="pl-10 pr-4 py-3 border border-slate-300 rounded-lg text-base w-full focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
+                  />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-5 w-5 text-slate-400 absolute left-3 top-3.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <div
+              class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
+            >
+              <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                  <thead
+                    class="bg-slate-50 text-slate-500 font-medium border-b border-slate-200"
+                  >
+                    <tr>
+                      <th class="px-6 py-3 whitespace-nowrap w-16">序號</th>
+                      <th class="px-6 py-3 whitespace-nowrap">建立日期</th>
+                      <th class="px-6 py-3 whitespace-nowrap">學生/班級</th>
+                      <th class="px-6 py-3 whitespace-nowrap">項目</th>
+                      <th class="px-6 py-3 whitespace-nowrap text-right">
+                        應繳總額
+                      </th>
+                      <th class="px-6 py-3 whitespace-nowrap text-center">
+                        狀態
+                      </th>
+                      <th class="px-6 py-3 whitespace-nowrap text-center">
+                        操作
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100">
+                    <tr
+                      v-for="(order, index) in activeOrders"
+                      :key="order.id"
+                      class="hover:bg-slate-50 group"
+                    >
+                      <td class="px-6 py-4 text-slate-500 font-mono">
+                        {{ index + 1 }}
+                      </td>
+                      <td class="px-6 py-4 text-slate-500">
+                        {{ order.createdAt }}
+                      </td>
+                      <td class="px-6 py-4">
+                        <div class="font-bold text-slate-800 text-base">
+                          {{ getStudentName(order.studentId) }}
+                        </div>
+                        <div class="text-xs text-slate-500 mt-0.5">
+                          {{ getStudentClass(order.studentId) }}
+                        </div>
+                      </td>
+                      <td class="px-6 py-4 text-slate-700">
+                        {{ order.title }}
+                      </td>
+                      <td class="px-6 py-4 text-right font-medium text-base">
+                        {{ formatNumber(order.totalAmount) }}
+                      </td>
+                      <td class="px-6 py-4 text-center">
+                        <span
+                          v-if="order.isClosed"
+                          class="inline-flex px-2 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-500"
+                          >已結案</span
+                        >
+                        <span
+                          v-else-if="getPaidAmount(order.id) > 0"
+                          class="inline-flex px-2 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-600"
+                          >分期中</span
+                        >
+                        <span
+                          v-else
+                          class="inline-flex px-2 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-600"
+                          >未繳費</span
+                        >
+                      </td>
+                      <td class="px-6 py-4 text-center">
+                        <div class="flex items-center justify-center gap-3">
+                          <!-- 繳費按鈕 -->
+                          <button
+                            v-if="!order.isClosed"
+                            @click="openPaymentModal(order)"
+                            class="bg-blue-50 text-blue-600 border border-blue-200 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors"
+                          >
+                            繳費
+                          </button>
+                          <!-- 修改按鈕 -->
+                          <button
+                            @click="openOrderModal(order)"
+                            class="text-slate-400 hover:text-indigo-600 p-1"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              class="h-5 w-5"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            >
+                              <path
+                                d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+                              />
+                              <path
+                                d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
+                              />
+                            </svg>
+                          </button>
+                          <!-- 刪除按鈕 -->
+                          <button
+                            @click="deleteOrder(order.id)"
+                            class="text-slate-400 hover:text-red-600 p-1"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              class="h-5 w-5"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            >
+                              <polyline points="3 6 5 6 21 6" />
+                              <path
+                                d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                        <div
+                          v-if="order.isClosed"
+                          class="mt-2 text-xs text-emerald-600 flex flex-col items-center"
+                        >
+                          <span class="flex items-center gap-1 font-medium"
+                            ><svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              class="h-3 w-3"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            >
+                              <polyline points="20 6 9 17 4 12" /></svg
+                            >已結案</span
+                          >
+                          <span class="text-[10px] text-slate-400 mt-0.5"
+                            >{{ getLastPaymentTime(order.id) }}</span
+                          >
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Expenses -->
+          <div v-if="currentView === 'expenses'" class="space-y-6">
+            <h2 class="text-2xl font-bold text-slate-800">一般支出記帳</h2>
+            <div
+              class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col gap-4"
+            >
+              <div class="flex gap-4">
+                <div class="flex-1">
+                  <label
+                    class="block text-xs font-bold text-slate-500 uppercase mb-1"
+                    >日期</label
+                  >
+                  <input
+                    type="date"
+                    v-model="newExpense.date"
+                    class="w-full px-3 py-3 border border-slate-300 rounded-lg text-base"
+                  />
+                </div>
+                <div class="flex-1">
+                  <label
+                    class="block text-xs font-bold text-slate-500 uppercase mb-1"
+                    >類別</label
+                  >
+                  <select
+                    v-model="newExpense.category"
+                    class="w-full px-3 py-3 border border-slate-300 rounded-lg text-base bg-white"
+                  >
+                    <option v-for="c in expenseCategories" :value="c">
+                      {{ c }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label
+                  class="block text-xs font-bold text-slate-500 uppercase mb-1"
+                  >說明</label
+                >
+                <input
+                  type="text"
+                  v-model="newExpense.description"
+                  placeholder="支出說明"
+                  class="w-full px-3 py-3 border border-slate-300 rounded-lg text-base"
+                />
+              </div>
+              <div>
+                <label
+                  class="block text-xs font-bold text-slate-500 uppercase mb-1"
+                  >金額</label
+                >
+                <input
+                  type="number"
+                  v-model.number="newExpense.amount"
+                  class="w-full px-3 py-3 border border-slate-300 rounded-lg text-base font-bold text-rose-600"
+                />
+              </div>
+              <button
+                @click="addExpense"
+                class="bg-rose-600 text-white px-5 py-3 rounded-lg hover:bg-rose-700 shadow-sm text-base font-medium w-full mt-2"
+              >
+                新增支出
+              </button>
+            </div>
+            <div
+              class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
+            >
+              <table class="w-full text-left text-sm">
+                <thead class="bg-slate-50 text-slate-500 font-medium">
+                  <tr>
+                    <th class="px-6 py-3">日期</th>
+                    <th class="px-6 py-3">類別</th>
+                    <th class="px-6 py-3">說明</th>
+                    <th class="px-6 py-3 text-right">金額</th>
+                    <th class="px-6 py-3 text-center">刪除</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  <tr
+                    v-for="ex in expenseRecords"
+                    :key="ex.id"
+                    class="hover:bg-slate-50"
+                  >
+                    <td class="px-6 py-4">{{ ex.date }}</td>
+                    <td class="px-6 py-4">
+                      <span
+                        class="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs"
+                        >{{ ex.category }}</span
+                      >
+                    </td>
+                    <td class="px-6 py-4">{{ ex.description }}</td>
+                    <td
+                      class="px-6 py-4 text-right font-bold text-rose-600 text-base"
+                    >
+                      -{{ formatNumber(ex.amount) }}
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                      <button
+                        @click="deleteExpense(ex.id)"
+                        class="text-slate-300 hover:text-red-500 p-2"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="h-5 w-5"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Students -->
+          <div v-if="currentView === 'students'" class="space-y-6">
+            <div class="flex justify-between items-center">
+              <div>
+                <h2 class="text-2xl font-bold text-slate-800">學生資料</h2>
+                <span
+                  class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold mt-1 inline-block"
+                  >總人數: {{ students.length }}</span
+                >
+              </div>
+              <div class="relative">
+                <input
+                  type="text"
+                  v-model="searchTerm"
+                  placeholder="搜尋..."
+                  class="pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm w-40 focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-4 w-4 text-slate-400 absolute left-3 top-3"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div
+                class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-fit"
+              >
+                <h3 class="font-bold text-slate-700 mb-4">新增學生</h3>
+                <div class="space-y-3">
+                  <input
+                    type="text"
+                    v-model="newStudent.name"
+                    placeholder="姓名"
+                    class="w-full px-3 py-3 border rounded-lg text-base"
+                  />
+                  <input
+                    type="text"
+                    v-model="newStudent.className"
+                    placeholder="班別 (例：國二)"
+                    class="w-full px-3 py-3 border rounded-lg text-base"
+                  />
+                  <input
+                    type="text"
+                    v-model="newStudent.parentPhone"
+                    placeholder="家長電話"
+                    class="w-full px-3 py-3 border rounded-lg text-base"
+                  />
+                  <button
+                    @click="addStudent"
+                    class="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 font-medium"
+                  >
+                    確認新增
+                  </button>
+                </div>
+              </div>
+              <div
+                class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
+              >
+                <div class="max-h-[600px] overflow-y-auto">
+                  <table class="w-full text-left text-sm">
+                    <thead
+                      class="bg-slate-50 text-slate-500 font-medium sticky top-0 bg-white shadow-sm"
+                    >
+                      <tr>
+                        <th class="px-6 py-3 whitespace-nowrap">姓名</th>
+                        <th class="px-6 py-3 whitespace-nowrap">班別</th>
+                        <th class="px-6 py-3 whitespace-nowrap">電話</th>
+                        <th class="px-6 py-3 whitespace-nowrap text-right">
+                          操作
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                      <tr
+                        v-for="s in filteredStudents"
+                        :key="s.id"
+                        class="hover:bg-slate-50"
+                      >
+                        <td class="px-6 py-4 font-medium text-base">
+                          {{ s.name }}
+                        </td>
+                        <td class="px-6 py-4">
+                          <span
+                            class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded text-xs"
+                            >{{ s.className }}</span
+                          >
+                        </td>
+                        <td class="px-6 py-4 text-slate-500">
+                          {{ s.parentPhone }}
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                          <button
+                            @click="deleteStudent(s.id)"
+                            class="text-slate-400 hover:text-red-500 p-2"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              class="h-5 w-5"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            >
+                              <path d="M3 6h18" />
+                              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                            </svg>
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Reports -->
+          <div v-if="currentView === 'reports'" class="space-y-6">
+            <h2 class="text-2xl font-bold text-slate-800">報表中心</h2>
+            <div
+              class="bg-white p-8 rounded-xl shadow-sm border border-slate-200"
+            >
+              <div class="flex items-center gap-4 mb-6">
+                <div class="p-4 bg-blue-100 text-blue-600 rounded-xl">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-8 w-8"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h3 class="font-bold text-xl text-slate-800">完整財務總表</h3>
+                  <p class="text-slate-500">
+                    包含所有學生的應繳、已繳、欠費與詳細紀錄。
+                  </p>
+                </div>
+              </div>
+              <button
+                @click="exportCombinedCSV"
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-colors flex justify-center gap-2 items-center shadow-md text-lg"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-6 w-6"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" /></svg
+                >匯出完整報表 (CSV)
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- Config Modal -->
+      <div
+        v-if="isConfigModalOpen"
+        class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+      >
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+          <h3 class="text-xl font-bold mb-4 text-slate-800">雲端同步設定</h3>
+          <p class="text-sm text-slate-500 mb-4">
+            請輸入 Google Apps Script 網址：
+          </p>
+          <input
+            type="text"
+            v-model="gasUrlInput"
+            class="w-full border border-slate-300 rounded-lg p-3 mb-4 text-sm"
+          />
+          <div class="flex gap-3">
+            <button
+              @click="isConfigModalOpen = false"
+              class="flex-1 py-3 border rounded-lg hover:bg-gray-50"
+            >
+              取消
+            </button>
+            <button
+              @click="saveConfig"
+              class="flex-1 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              連線
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Order Modal -->
+      <div
+        v-if="isOrderModalOpen"
+        class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+      >
+        <div
+          class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto"
+        >
+          <h3 class="text-xl font-bold mb-4">
+            {{ isEditingOrder ? '修改繳費單' : '開立新繳費單' }}
+          </h3>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1"
+                >選擇學生</label
+              ><select
+                v-model="newOrder.studentId"
+                class="w-full border border-slate-300 rounded-lg p-3 bg-white"
+              >
+                <option :value="undefined">請選擇學生</option>
+                <option v-for="s in students" :key="s.id" :value="s.id">
+                  {{ s.name }} ({{ s.className }})
+                </option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1"
+                >繳費項目名稱</label
+              ><input
+                type="text"
+                v-model="newOrder.title"
+                class="w-full border border-slate-300 rounded-lg p-3"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1"
+                >應繳總金額</label
+              ><input
+                type="number"
+                v-model.number="newOrder.totalAmount"
+                class="w-full border border-slate-300 rounded-lg p-3"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1"
+                >繳費期限</label
+              ><input
+                type="date"
+                v-model="newOrder.dueDate"
+                class="w-full border border-slate-300 rounded-lg p-3"
+              />
+            </div>
+
+            <!-- 狀態切換：僅在編輯模式下且已結案時顯示 -->
+            <div
+              v-if="isEditingOrder && newOrder.isClosed"
+              class="pt-2 border-t border-slate-100"
+            >
+              <label
+                class="flex items-center gap-2 cursor-pointer text-slate-600 hover:text-slate-800"
+              >
+                <input
+                  type="checkbox"
+                  v-model="newOrder.isClosed"
+                  class="w-5 h-5 text-blue-600 rounded"
+                />
+                <span class="font-bold">已結案 (取消勾選以設為未繳)</span>
+              </label>
+              <p class="text-xs text-orange-500 mt-1">
+                ※ 若要退費或更正，請取消勾選此項目，並確認下方付款紀錄是否正確。
+              </p>
+            </div>
+          </div>
+          <div class="mt-6 flex gap-3">
+            <button
+              @click="isOrderModalOpen = false"
+              class="flex-1 py-3 border rounded-lg hover:bg-gray-50"
+            >
+              取消
+            </button>
+            <button
+              @click="saveOrder"
+              class="flex-1 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              {{ isEditingOrder ? '儲存修改' : '建立單據' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Payment Modal -->
+      <div
+        v-if="isPaymentModalOpen && selectedOrder"
+        class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+      >
+        <div
+          class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto"
+        >
+          <div class="flex justify-between items-start mb-4">
+            <div>
+              <h3 class="text-xl font-bold">繳費登錄</h3>
+              <p class="text-sm text-slate-500 mb-2">
+                {{ selectedOrder.title }}
+              </p>
+              <!-- 修改 3: 學生姓名放大顯示 -->
+              <p
+                class="text-4xl font-extrabold text-blue-800 bg-yellow-100 px-3 py-1 rounded inline-block"
+              >
+                {{ getStudentName(selectedOrder.studentId) }}
+              </p>
+            </div>
+            <div class="text-right">
+              <p class="text-xs text-slate-500">剩餘欠費</p>
+              <p class="text-lg font-bold text-rose-600">
+                {{ formatNumber(selectedOrder.totalAmount -
+                getPaidAmount(selectedOrder.id)) }}
+              </p>
+            </div>
+          </div>
+          <div class="space-y-4 bg-slate-50 p-4 rounded-lg mb-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1"
+                >本次實收金額</label
+              ><input
+                type="number"
+                v-model.number="newPayment.amount"
+                class="w-full border border-blue-500 ring-2 ring-blue-100 rounded-lg p-3 font-bold text-lg"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1"
+                >付款方式</label
+              ><select
+                v-model="newPayment.method"
+                class="w-full border border-slate-300 rounded-lg p-3 bg-white"
+              >
+                <option
+                  v-for="m in paymentMethods"
+                  :key="m.value"
+                  :value="m.value"
+                >
+                  {{ m.label }}
+                </option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1"
+                >收據編號</label
+              ><input
+                type="text"
+                v-model="newPayment.receiptNo"
+                class="w-full border border-slate-300 rounded-lg p-3"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1"
+                >繳費日期</label
+              ><input
+                type="date"
+                v-model="newPayment.date"
+                class="w-full border border-slate-300 rounded-lg p-3"
+              />
+            </div>
+          </div>
+          <div class="flex gap-3">
+            <button
+              @click="isPaymentModalOpen = false"
+              class="flex-1 py-3 border rounded-lg hover:bg-gray-50"
+            >
+              取消
+            </button>
+            <button
+              @click="submitPayment"
+              class="flex-1 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+            >
+              確認收款
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      window.onerror = function (msg, url, line) {
+        document.getElementById("startup-loader").style.display = "flex";
+        document.getElementById("loader-spinner").style.display = "none";
+        document.getElementById("error-message").style.display = "block";
+        document.getElementById("error-text").innerText =
+          msg + " (Line: " + line + ")";
+        return false;
+      };
+
+      const { createApp, ref, computed, onMounted, reactive } = Vue;
+
+      const DEMO_CSV_CONTENT = `帳單月份,年級,姓名,應繳金額,繳費狀態,繳費日期,備註
+2025-12,小一,盧以芯,3500,未繳,,
+2025-12,小一,徐柏翰,3500,未繳,,
+2025-12,小一,邱云希,3500,未繳,,
+2025-12,小一,徐子玄,3500,未繳,,
+2025-12,小一,曾少澤,3500,未繳,,
+2025-12,小一,楊宥姍,3500,已繳,2025-12-05,
+2025-12,小二,鍾享峪,5300,未繳,,
+2025-12,小二,曾姵瑩,3500,未繳,,
+2025-12,小二,鍾紫嫺,5300,未繳,,
+2025-12,小二,劉奎佑,5300,未繳,,
+2025-12,小二,黃仁宇,5300,未繳,,
+2025-12,小三,彭世帆,5300,未繳,,
+2025-12,小三,王熙延,5300,未繳,,
+2025-12,小三,鍾睿浩,5300,未繳,,
+2025-12,國一,彭思語,7000,未繳,,
+2025-12,國一,葉瑋中,7000,未繳,,
+2025-12,國一,謝兆恩,7000,未繳,,
+2025-12,國一,曾昶睿,7000,未繳,,
+2025-12,國一,李梓彥,7000,未繳,,
+2025-12,國一,林佾芯,7000,未繳,,
+2025-12,國一,陳正恩,7000,未繳,,
+2025-12,國一,徐品琁,7000,未繳,,
+2025-12,國一,林芷婕,7000,未繳,,
+2025-12,國一,陳柏羽,7000,未繳,,
+2025-12,國一,林有容,7000,未繳,,
+2025-12,國一,江杰恩,7000,未繳,,
+2025-12,國一,連伯修,7000,未繳,,
+2025-12,國一,魏定謙,2500,未繳,,
+2025-12,國一,張瑞宸,7000,未繳,,
+2025-12,國一,易睿騰,7000,未繳,,`;
+
+      try {
+        createApp({
+          setup() {
+            const currentView = ref("dashboard");
+            const students = ref([]);
+            const tuitionOrders = ref([]);
+            const paymentRecords = ref([]);
+            const expenseRecords = ref([]);
+            const isMobileMenuHidden = ref(true);
+            const isMobile = ref(false);
+            const searchTerm = ref("");
+            const isEditingOrder = ref(false);
+            const currentEditingOrderId = ref(null);
+            const isLoading = ref(false);
+            // Replace with your actual GAS Web App URL
+            const gasUrl = ref(
+              "https://script.google.com/macros/s/AKfycbxVVEmY102Hrxo08_Wh2V0zE81JMeWGoeQQnMbZYWxBw2Se9qrTQEPiPxIqvGuoZR0d/exec"
+            );
+            const isOrderModalOpen = ref(false);
+            const isPaymentModalOpen = ref(false);
+            const selectedOrder = ref(null);
+
+            const newStudent = reactive({
+              name: "",
+              className: "",
+              parentPhone: "",
+            });
+            const newOrder = reactive({
+              studentId: undefined,
+              title: "",
+              totalAmount: undefined,
+              dueDate: "",
+              isClosed: false,
+            });
+            const newPayment = reactive({
+              amount: undefined,
+              method: "cash",
+              receiptNo: "",
+              date: "",
+            });
+            const newExpense = reactive({
+              date: "",
+              category: "雜支",
+              amount: undefined,
+              description: "",
+            });
+
+            const expenseCategories = [
+              "教師薪資",
+              "房租",
+              "水電費",
+              "教材印刷",
+              "設備維護",
+              "雜支",
+            ];
+            const paymentMethods = [
+              { value: "cash", label: "現金" },
+              { value: "transfer", label: "銀行轉帳" },
+              { value: "linepay", label: "Line Pay" },
+            ];
+
+            const menuItems = [
+              {
+                id: "dashboard",
+                label: "財務儀表板",
+                icon: '<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>',
+              },
+              {
+                id: "tuition",
+                label: "繳費管理",
+                icon: '<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>',
+              },
+              {
+                id: "expenses",
+                label: "一般支出",
+                icon: '<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>',
+              },
+              {
+                id: "students",
+                label: "學生資料",
+                icon: '<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>',
+              },
+              {
+                id: "reports",
+                label: "報表中心",
+                icon: '<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>',
+              },
+            ];
+
+            const getTitle = () => {
+              const item = menuItems.find((i) => i.id === currentView.value);
+              return item ? item.label : "";
+            };
+
+            const getPaidAmount = (orderId) =>
+              paymentRecords.value
+                .filter((p) => p.orderId === orderId)
+                .reduce((sum, p) => sum + Number(p.amount), 0);
+            const getStudentName = (id) =>
+              students.value.find((s) => s.id === id)?.name || "未知";
+            const getStudentClass = (id) =>
+              students.value.find((s) => s.id === id)?.className || "";
+            const getLastPaymentTime = (orderId) => {
+              const payments = paymentRecords.value.filter(
+                (p) => p.orderId === orderId
+              );
+              if (payments.length === 0) return "";
+              const last = payments[0];
+              return last.timestamp || last.date;
+            };
+            const formatCurrency = (val) =>
+              new Intl.NumberFormat("zh-TW", {
+                style: "currency",
+                currency: "TWD",
+                maximumFractionDigits: 0,
+              }).format(val || 0);
+            const formatNumber = (val) =>
+              new Intl.NumberFormat("zh-TW").format(val || 0);
+            const getGradeScore = (className) => {
+              const grades = [
+                "國三",
+                "國二",
+                "國一",
+                "小六",
+                "小五",
+                "小四",
+                "小三",
+                "小二",
+                "小一",
+              ];
+              const index = grades.findIndex(
+                (g) => className && className.includes(g)
+              );
+              return index === -1 ? 100 : index;
+            };
+
+            const currentMonthStr = computed(() =>
+              new Date().toISOString().slice(0, 7)
+            );
+            const stats = computed(() => {
+              const cm = currentMonthStr.value;
+              // Force Number conversion to prevent string concatenation
+              const inc = paymentRecords.value
+                .filter((p) => p.date.startsWith(cm))
+                .reduce((sum, p) => sum + Number(p.amount), 0);
+              const exp = expenseRecords.value
+                .filter((e) => e.date.startsWith(cm))
+                .reduce((sum, e) => sum + Number(e.amount), 0);
+              let overdue = 0;
+              tuitionOrders.value.forEach((o) => {
+                if (!o.isClosed)
+                  overdue += Number(o.totalAmount) - getPaidAmount(o.id);
+              });
+              return {
+                monthIncome: inc,
+                monthExpense: exp,
+                monthNet: inc - exp,
+                totalOverdue: overdue,
+              };
+            });
+            const overdueOrders = computed(() =>
+              tuitionOrders.value
+                .filter(
+                  (o) =>
+                    !o.isClosed &&
+                    Number(o.totalAmount) - getPaidAmount(o.id) > 0
+                )
+                .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+            );
+            const activeOrders = computed(() => {
+              const sorted = [...tuitionOrders.value].sort((a, b) => {
+                if (a.isClosed !== b.isClosed) return a.isClosed ? 1 : -1;
+                const scA = getGradeScore(getStudentClass(a.studentId));
+                const scB = getGradeScore(getStudentClass(b.studentId));
+                if (scA !== scB) return scA - scB;
+                return b.createdAt.localeCompare(a.createdAt);
+              });
+              if (!searchTerm.value.trim()) return sorted;
+              return sorted.filter((o) =>
+                getStudentName(o.studentId).includes(searchTerm.value)
+              );
+            });
+            const filteredStudents = computed(() => {
+              let list = [...students.value];
+              if (searchTerm.value.trim())
+                list = list.filter((s) => s.name.includes(searchTerm.value));
+              return list.sort((a, b) => {
+                const scA = getGradeScore(a.className);
+                const scB = getGradeScore(b.className);
+                if (scA !== scB) return scA - scB;
+                return (
+                  a.className.localeCompare(b.className) ||
+                  a.name.localeCompare(b.name)
+                );
+              });
+            });
+
+            const processCSV = (csvContent) => {
+              const lines = csvContent.split("\n");
+              for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                const cols = line.split(",");
+                if (cols.length < 5) continue;
+                const month = cols[0].trim();
+                const grade = cols[1].trim();
+                const name = cols[2].trim();
+                const amount = parseInt(cols[3].trim()) || 0;
+                const status = cols[4].trim();
+                const payDate = cols[5]?.trim() || "";
+                const note = cols[6]?.trim() || "";
+                let student = students.value.find(
+                  (s) => s.name === name && s.className === grade
+                );
+                if (!student) {
+                  student = {
+                    id: "S-" + Math.random().toString(36).substr(2, 9),
+                    name: name,
+                    className: grade,
+                    parentPhone: "",
+                    note: note,
+                  };
+                  students.value.push(student);
+                }
+                const orderId =
+                  "ORD-" + Math.random().toString(36).substr(2, 9);
+                const isPaid = status === "已繳";
+                const order = {
+                  id: orderId,
+                  studentId: student.id,
+                  title: `${month} 學費`,
+                  totalAmount: amount,
+                  dueDate: `${month}-15`,
+                  createdAt: new Date().toISOString().split("T")[0],
+                  isClosed: isPaid,
+                };
+                tuitionOrders.value.unshift(order);
+                if (isPaid) {
+                  paymentRecords.value.unshift({
+                    id: "PAY-" + Math.random().toString(36).substr(2, 9),
+                    orderId: orderId,
+                    amount: amount,
+                    date: payDate || new Date().toISOString().split("T")[0],
+                    method: "cash",
+                    receiptNo: "AUTO-" + Math.floor(Math.random() * 10000),
+                    handler: "System Import",
+                  });
+                }
+              }
+              saveData();
+            };
+
+            const saveData = () => {
+              try {
+                localStorage.setItem(
+                  "cs_students",
+                  JSON.stringify(students.value)
+                );
+                localStorage.setItem(
+                  "cs_orders",
+                  JSON.stringify(tuitionOrders.value)
+                );
+                localStorage.setItem(
+                  "cs_payments",
+                  JSON.stringify(paymentRecords.value)
+                );
+                localStorage.setItem(
+                  "cs_expenses",
+                  JSON.stringify(expenseRecords.value)
+                );
+                if (gasUrl.value) syncToCloud();
+              } catch (e) {
+                console.error("Save failed", e);
+              }
+            };
+
+            const syncToCloud = async () => {
+              if (!gasUrl.value) return;
+              isLoading.value = true;
+              try {
+                await fetch(gasUrl.value, {
+                  method: "POST",
+                  body: JSON.stringify({
+                    students: students.value,
+                    tuitionOrders: tuitionOrders.value,
+                    paymentRecords: paymentRecords.value,
+                    expenseRecords: expenseRecords.value,
+                  }),
+                  mode: "no-cors",
+                });
+                // No alert here, silent sync
+              } catch (e) {
+                alert("同步失敗");
+              } finally {
+                isLoading.value = false;
+              }
+            };
+
+            const loadData = async () => {
+              isLoading.value = true;
+              if (gasUrl.value) {
+                try {
+                  const res = await fetch(gasUrl.value);
+                  const data = await res.json();
+                  if (data && data.Students) {
+                    students.value = data.Students || [];
+                    tuitionOrders.value = data.Orders || [];
+                    paymentRecords.value = data.Payments || [];
+                    expenseRecords.value = data.Expenses || [];
+
+                    // Cleanup locally as well
+                    tuitionOrders.value.forEach(
+                      (o) => (o.totalAmount = Number(o.totalAmount))
+                    );
+                    paymentRecords.value.forEach(
+                      (p) => (p.amount = Number(p.amount))
+                    );
+                    expenseRecords.value.forEach(
+                      (e) => (e.amount = Number(e.amount))
+                    );
+
+                    isLoading.value = false;
+                    return;
+                  }
+                } catch (e) {
+                  console.warn("Cloud load fail", e);
+                }
+              }
+              const s = localStorage.getItem("cs_students");
+              if (s) {
+                students.value = JSON.parse(s);
+                tuitionOrders.value = JSON.parse(
+                  localStorage.getItem("cs_orders") || "[]"
+                );
+                paymentRecords.value = JSON.parse(
+                  localStorage.getItem("cs_payments") || "[]"
+                );
+                expenseRecords.value = JSON.parse(
+                  localStorage.getItem("cs_expenses") || "[]"
+                );
+
+                // Cleanup locally as well
+                tuitionOrders.value.forEach(
+                  (o) => (o.totalAmount = Number(o.totalAmount))
+                );
+                paymentRecords.value.forEach(
+                  (p) => (p.amount = Number(p.amount))
+                );
+                expenseRecords.value.forEach(
+                  (e) => (e.amount = Number(e.amount))
+                );
+              } else {
+                processCSV(DEMO_CSV_CONTENT);
+              }
+              isLoading.value = false;
+            };
+
+            const handleCSVUpload = (event) => {
+              const file = event.target.files[0];
+              if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                  processCSV(e.target.result);
+                  alert("匯入成功！");
+                };
+                reader.readAsText(file);
+              }
+            };
+            const resetData = () => {
+              if (confirm("確定重置？")) {
+                localStorage.clear();
+                location.reload();
+              }
+            };
+            const addStudent = () => {
+              if (!newStudent.name) return;
+              students.value.push({ id: Date.now().toString(), ...newStudent });
+              saveData();
+              newStudent.name = "";
+              newStudent.className = "";
+              newStudent.parentPhone = "";
+            };
+            const deleteStudent = (id) => {
+              if (confirm("刪除？")) {
+                students.value = students.value.filter((s) => s.id !== id);
+                saveData();
+              }
+            };
+            const openOrderModal = (order) => {
+              isOrderModalOpen.value = true;
+              if (order) {
+                isEditingOrder.value = true;
+                currentEditingOrderId.value = order.id;
+                Object.assign(newOrder, { ...order });
+              } else {
+                isEditingOrder.value = false;
+                currentEditingOrderId.value = null;
+                Object.assign(newOrder, {
+                  dueDate: new Date().toISOString().split("T")[0],
+                  totalAmount: undefined,
+                  title: "",
+                  isClosed: false,
+                });
+              }
+            };
+            const saveOrder = () => {
+              if (!newOrder.studentId || !newOrder.totalAmount) {
+                alert("請填寫完整");
+                return;
+              }
+              if (isEditingOrder.value && currentEditingOrderId.value) {
+                const idx = tuitionOrders.value.findIndex(
+                  (o) => o.id === currentEditingOrderId.value
+                );
+                if (idx !== -1)
+                  tuitionOrders.value[idx] = {
+                    ...tuitionOrders.value[idx],
+                    ...newOrder,
+                  };
+              } else {
+                tuitionOrders.value.unshift({
+                  id: "ORD-" + Date.now(),
+                  ...newOrder,
+                  createdAt: new Date().toISOString().split("T")[0],
+                  isClosed: false,
+                });
+              }
+              saveData();
+              isOrderModalOpen.value = false;
+            };
+            const deleteOrder = (id) => {
+              if (confirm("刪除？")) {
+                tuitionOrders.value = tuitionOrders.value.filter(
+                  (o) => o.id !== id
+                );
+                paymentRecords.value = paymentRecords.value.filter(
+                  (p) => p.orderId !== id
+                );
+                saveData();
+              }
+            };
+            const openPaymentModal = (order) => {
+              selectedOrder.value = order;
+              const remaining = order.totalAmount - getPaidAmount(order.id);
+              Object.assign(newPayment, {
+                amount: remaining,
+                method: "cash",
+                date: new Date().toISOString().split("T")[0],
+                receiptNo: "REC-" + Math.floor(Math.random() * 1000),
+              });
+              isPaymentModalOpen.value = true;
+            };
+            const submitPayment = () => {
+              if (!selectedOrder.value || !newPayment.amount) return;
+              const ts = new Date().toLocaleString("zh-TW", { hour12: false });
+              paymentRecords.value.unshift({
+                id: "PAY-" + Date.now(),
+                orderId: selectedOrder.value.id,
+                ...newPayment,
+                timestamp: ts,
+                handler: "Admin",
+              });
+              const paid = getPaidAmount(selectedOrder.value.id);
+              if (paid >= selectedOrder.value.totalAmount)
+                selectedOrder.value.isClosed = true;
+              saveData();
+              isPaymentModalOpen.value = false;
+            };
+            const addExpense = () => {
+              if (!newExpense.amount) return;
+              expenseRecords.value.unshift({
+                id: "EXP-" + Date.now(),
+                ...newExpense,
+              });
+              saveData();
+              Object.assign(newExpense, {
+                category: "雜支",
+                amount: undefined,
+                description: "",
+              });
+            };
+            const deleteExpense = (id) => {
+              if (confirm("刪除？")) {
+                expenseRecords.value = expenseRecords.value.filter(
+                  (e) => e.id !== id
+                );
+                saveData();
+              }
+            };
+            const saveConfig = () => {
+              if (gasUrlInput.value) {
+                localStorage.setItem("gas_url", gasUrlInput.value);
+                gasUrl.value = gasUrlInput.value;
+                loadData();
+                isConfigModalOpen.value = false;
+              }
+            };
+
+            const downloadCSV = (headers, data, fileName) => {
+              const csvContent =
+                "\uFEFF" +
+                [headers.join(","), ...data.map((row) => row.join(","))].join(
+                  "\n"
+                );
+              const blob = new Blob([csvContent], {
+                type: "text/csv;charset=utf-8;",
+              });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.href = url;
+              link.download = `${fileName}_${new Date()
+                .toISOString()
+                .slice(0, 10)}.csv`;
+              link.click();
+            };
+            const exportCombinedCSV = () => {
+              const headers = [
+                "建立日期",
+                "學生姓名",
+                "班級",
+                "家長電話",
+                "繳費項目",
+                "應繳金額",
+                "已繳金額",
+                "欠費金額",
+                "狀態",
+                "最後繳費時間",
+                "收據編號",
+              ];
+              const data = [...tuitionOrders.value]
+                .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+                .map((order) => {
+                  const s = students.value.find(
+                    (st) => st.id === order.studentId
+                  );
+                  const paid = getPaidAmount(order.id);
+                  const lastP = paymentRecords.value.filter(
+                    (p) => p.orderId === order.id
+                  )[0];
+                  let status = "未繳";
+                  if (order.isClosed) status = "已結案";
+                  else if (paid > 0) status = "分期中";
+                  return [
+                    order.createdAt,
+                    s?.name || "未知",
+                    s?.className || "",
+                    s?.parentPhone || "",
+                    order.title,
+                    order.totalAmount,
+                    paid,
+                    order.totalAmount - paid,
+                    status,
+                    lastP ? lastP.timestamp || lastP.date : "",
+                    lastP ? lastP.receiptNo : "",
+                  ];
+                });
+              downloadCSV(headers, data, "補習班財務總表");
+            };
+
+            onMounted(() => {
+              gasUrl.value =
+                "https://script.google.com/macros/s/AKfycbxVVEmY102Hrxo08_Wh2V0zE81JMeWGoeQQnMbZYWxBw2Se9qrTQEPiPxIqvGuoZR0d/exec";
+              loadData();
+              const checkSize = () => {
+                isMobile.value = window.innerWidth < 768;
+                if (!isMobile.value) isMobileMenuHidden.value = true;
+              };
+              checkSize();
+              window.addEventListener("resize", checkSize);
+
+              // Hide loader when mounted
+              document.getElementById("startup-loader").style.display = "none";
+              document.getElementById("app").style.display = "flex";
+            });
+
+            return {
+              currentView,
+              setView: (v) => {
+                currentView.value = v;
+                searchTerm.value = "";
+                isMobileMenuHidden.value = true;
+              },
+              students,
+              tuitionOrders,
+              paymentRecords,
+              expenseRecords,
+              stats,
+              overdueOrders,
+              activeOrders,
+              currentMonthStr,
+              newStudent,
+              newOrder,
+              newPayment,
+              newExpense,
+              isMobile,
+              isMobileMenuHidden,
+              toggleMobileMenu: () =>
+                (isMobileMenuHidden.value = !isMobileMenuHidden.value),
+              isOrderModalOpen,
+              isPaymentModalOpen,
+              selectedOrder,
+              menuItems,
+              expenseCategories,
+              paymentMethods,
+              getStudentName,
+              getStudentClass,
+              getPaidAmount,
+              getLastPaymentTime,
+              formatCurrency,
+              formatNumber,
+              addStudent,
+              deleteStudent,
+              openOrderModal,
+              saveOrder,
+              deleteOrder,
+              openPaymentModal,
+              submitPayment,
+              addExpense,
+              deleteExpense,
+              handleCSVUpload,
+              resetData,
+              exportCombinedCSV,
+              isLoading,
+              gasUrl,
+              syncToCloud,
+              isEditingOrder,
+              getTitle,
+            };
+          },
+        }).mount("#app");
+      } catch (err) {
+        document.getElementById("startup-loader").style.display = "flex";
+        document.getElementById("loader-spinner").style.display = "none";
+        document.getElementById("error-message").style.display = "block";
+        document.getElementById("error-text").innerText = err.message;
+      }
+    </script>
+  </body>
+</html>
